@@ -9,7 +9,7 @@ Created on Sun Mar 26 01:44:54 PM CEST 2023
 from torch import nn, optim, Tensor
 import functools
 from typing import List, Callable, Union
-from .structs import PreceptronLayer
+from .layers import PreceptronLayer
 from .errors import (
     NoCriterionAssigned,
     NoOptimizerAssigned,
