@@ -25,6 +25,11 @@ from .errors import (
 
 # 🧠 Neural Networks -----------------------------------------------------------------
 class MultiLayerPreceptron(nn.Module):
+    """
+    A class that represents Multi layer Preceptron (MLP)
+    arquitectures.
+    """
+
     def __init__(self, input_size: int) -> None:
         if not isinstance(input_size, int):
             raise ValueError(f"Invalid value {input_size} for argument input_size")
@@ -71,10 +76,8 @@ class MultiLayerPreceptron(nn.Module):
         self.forward_pipe.append(new_layer)
 
         # add the proper activation function
-        if layer.activation == "r no_grelu":
-            new_act_func = nn.ReLU()
-        elif layer.activation == "logsoftmax":
-            new_act_func = nn.LogSoftmax(dim=1)
+        if layer.activation is not None:
+            new_act_func = layer.activation
         else:  # back up with a Relu
             new_act_func = nn.ReLU()
 
@@ -179,6 +182,12 @@ class MultiLayerPreceptron(nn.Module):
                 validation_loss = self.computeValidationLoss(validloader, loss_modifier)
                 self.validation_loss_during_training[e] = validation_loss  # type:ignore
 
+        print(f"Training Loss: {self.loss_during_training[-1]}")
+        if validloader:
+            print(
+                f"Training Loss: {self.validation_loss_during_training[-1]}"  # type:ignore
+            )
+
     def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
         """
         # IMPORTANT
@@ -208,6 +217,12 @@ class MultiLayerPreceptron(nn.Module):
         return running_loss
 
     def computeValidationLoss(self, validloader: DataLoader, loss_modifier) -> float:
+        """
+        Method that computes validation loss in the case that a validation loader
+        was provided to the training method.
+
+        #NOTE: If modified by the user, it must return a float.
+        """
         running_loss = 0.0
         with no_grad():
             for data_val, labels_val in validloader:
@@ -216,3 +231,74 @@ class MultiLayerPreceptron(nn.Module):
 
                 running_loss += loss_modifier(loss_val).item()
         return running_loss
+
+
+class DeterministicAutoEncoder(MultiLayerPreceptron):
+    """
+    A class that represents deterministic AutoEncoders.
+    """
+
+    def __init__(self, input_sequence_size: int):
+        # Initialize MLP methods
+        super().__init__(input_sequence_size)
+
+    def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
+        """
+        # IMPORTANT
+        This is a method that should be modularized and modified by the user depending on the
+        network arquitecture
+
+        This method must load the training data of the epoch (whether in batches or not), propagate
+        the loss backwards, take the needed step in the optimizer, and return a loss value.
+        """
+        running_loss = 0.0
+        for sequence, _ in trainloader:
+            # reset gradients
+            self._optim.zero_grad()  # type: ignore
+
+            # compute the loss (difference between an sequence and itself)
+            out = self.forward(sequence.view(sequence.shape[0], -1))
+            loss = self._criterion(out, sequence.view(sequence.shape[0], -1))  # type:ignore
+
+            # propagate the loss
+            loss.backward()
+            self._optim.step()  # type: ignore
+
+            # Store the current batch loss
+            running_loss += loss_modifier(loss).item()
+
+        return running_loss
+
+    def computeValidationLoss(
+        self, validloader: DataLoader, loss_modifier: Callable
+    ) -> float:
+        """
+        Method that computes validation difference in the case that a validation loader
+        was provided to the training method.
+
+        #NOTE: If modified by the user, it must return a float accounting for the differnce
+        between the original sequence and the reconstructed one.
+        """
+        running_loss = 0.0
+        with torch.no_grad():
+            for sequence, _ in validloader:
+                out = self.forward(sequence.view(sequence.shape[0], -1))
+                loss = self._criterion(out, sequence.view(sequence.shape[0], -1))  # type: ignore
+
+                running_loss += loss_modifier(loss).item()
+            return running_loss
+
+    def disimilarity(self, dataloader: DataLoader, loss_modifier: Callable) -> float:
+        """
+        A score function for AutoEncoders that meassures differnece between the original
+        sequence and the reconstructed one
+        """
+        disimilarity = 0.0
+        with torch.no_grad():
+            for sequence, _ in dataloader:
+                # get the reconstructed sequence and compute the difference
+                reconstructed_seq = self.forward(sequence.view(sequence.shape[0], -1))
+                loss = self._criterion(reconstructed_seq, sequence)  # type:ignore
+
+                disimilarity += loss_modifier(loss).item()
+            return disimilarity / len(dataloader)
