@@ -7,6 +7,7 @@ Created on Sun Mar 26 07:57:43 PM CEST 2023
 
 @desc: File that contains layers for different kinds of Networks
 """
+from typing import Callable
 
 
 # 📦 Data structures -----------------------------------------------------------------
@@ -16,15 +17,10 @@ class PreceptronLayer(object):
     """
 
     def __init__(
-        self, size: int, activation: str, dropout: bool, dropout_rate: float = 0.0
+        self, size: int, activation: Callable, dropout: bool, dropout_rate: float = 0.0
     ):
         # Initial safety checks
-        self.__activations = ["relu", "logsoftmax"]
-        if activation.lower() not in self.__activations:
-            raise ValueError(
-                f"Activation function {activation} not available. Possible values are: {self.__activations}"
-            )
-        elif (size is None) or not isinstance(size, int):
+        if (size is None) or not isinstance(size, int):
             raise ValueError(f"Value {size} is not a proper value for the size")
 
         self._size = size

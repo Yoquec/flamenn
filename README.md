@@ -10,8 +10,8 @@ from flamenn.layers import PreceptronLayer
 
 testNN = (
     MultiLayerPreceptron(input_size=5)
-    .addLayer(PreceptronLayer(5, activation="relu", dropout=False))
-    .addLayer(PreceptronLayer(3, "relu", False))
+    .addLayer(PreceptronLayer(5, activation=torch.nn.ReLu(), dropout=False))
+    .addLayer(PreceptronLayer(3, torch.nn.ReLu(), False))
     .addCriterion(torch.nn.NLLLoss())
     .addOptim("adam", learning_rate=10e-3)
 )
