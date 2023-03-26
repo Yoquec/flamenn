@@ -17,9 +17,6 @@ from .errors import (
     OptimizerAlreadyAssignedError
 )
 
-
-
-
 # 🧠 Neural Networks -----------------------------------------------------------------
 class MultiLayerPreceptron(nn.Module):
     def __init__(self, input_size: int) -> None:
