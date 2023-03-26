@@ -1,5 +1,6 @@
 # Flamenn 🔥👷
 Flamenn is a high-level [pytorch](pytorch.org) wrapper for rapid prototyping of models.
+It uses a builder pattern for creating network arquitectures using pytorch's components.
 
 ## Example usage
 ```python
