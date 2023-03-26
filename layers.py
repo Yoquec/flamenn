@@ -1,4 +1,4 @@
-'''
+"""
 Created on Sun Mar 26 07:57:43 PM CEST 2023
 
 @file: layers.py
@@ -6,7 +6,9 @@ Created on Sun Mar 26 07:57:43 PM CEST 2023
 @author: Yoquec
 
 @desc: File that contains layers for different kinds of Networks
-'''
+"""
+
+
 # 📦 Data structures -----------------------------------------------------------------
 class PreceptronLayer(object):
     """

@@ -7,6 +7,11 @@ Created on Sun Mar 26 01:44:54 PM CEST 2023
 
 """
 from torch import nn, optim, Tensor
+from torch import no_grad
+from tqdm import tqdm
+import numpy as np
+from numpy._typing import NDArray
+from torch.utils.data.dataloader import DataLoader
 import functools
 from typing import List, Callable, Union
 from .layers import PreceptronLayer
@@ -14,8 +19,9 @@ from .errors import (
     NoCriterionAssigned,
     NoOptimizerAssigned,
     CriterionAlreadyAssignedError,
-    OptimizerAlreadyAssignedError
+    OptimizerAlreadyAssignedError,
 )
+
 
 # 🧠 Neural Networks -----------------------------------------------------------------
 class MultiLayerPreceptron(nn.Module):
@@ -28,8 +34,8 @@ class MultiLayerPreceptron(nn.Module):
         self.layers: List[PreceptronLayer] = []
         self.forward_pipe: List[Callable] = []
         self.compiled_pipe: Union[Callable, None] = None
-        self.loss_during_training: Union[List[float], None] = None
-        self.validation_loss_during_training: Union[List[float], None] = None
+        self.loss_during_training: Union[List[float], NDArray, None] = None
+        self.validation_loss_during_training: Union[List[float], NDArray, None] = None
         self._optim = None
         self._criterion = None
         self.__optimizers = ["adam"]
@@ -65,7 +71,7 @@ class MultiLayerPreceptron(nn.Module):
         self.forward_pipe.append(new_layer)
 
         # add the proper activation function
-        if layer.activation == "relu":
+        if layer.activation == "r no_grelu":
             new_act_func = nn.ReLU()
         elif layer.activation == "logsoftmax":
             new_act_func = nn.LogSoftmax(dim=1)
@@ -139,3 +145,74 @@ class MultiLayerPreceptron(nn.Module):
             raise NoCriterionAssigned("🛑 You haven't assigned a criterion yet!")
         else:
             return self._compile_pipe(x)
+
+    def train(
+        self,
+        trainloader: DataLoader,
+        epochs: int,
+        validloader: Union[DataLoader, None] = None,
+        loss_modifier: Callable = lambda x: x,
+    ):
+        """
+        NOTE: loss_modifier is a function that will be used as an injected dependency to
+        modify the output value of the loss function if needed before adding it to the running loss
+        """
+        self.loss_during_training = np.empty(epochs, dtype=float)
+        self.valid_loss_during_training = (
+            np.empty(epochs, dtype=float) if validloader else None
+        )
+
+        for e in tqdm(range(epochs)):
+            # WARNING: How should we handle computing running_loss for non-scalar
+            # loss functions?
+            # TODO: For now we will introduce a loss_modifier function as parameter to let the user handle it
+
+            # backpropagate and
+            running_loss = self.propagateLoss(trainloader, loss_modifier)
+            epoch_loss = running_loss / len(trainloader)
+
+            # store the loss
+            self.loss_during_training[e] = epoch_loss
+
+            # compute validation scores
+            if validloader is not None:
+                validation_loss = self.computeValidationLoss(validloader, loss_modifier)
+                self.validation_loss_during_training[e] = validation_loss  # type:ignore
+
+    def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
+        """
+        # IMPORTANT
+        This is a method that should be modularized and modified by the user depending on the
+        network arquitecture
+
+        This method must load the training data of the epoch (whether in batches or not), propagate
+        the loss backwards, take the needed step in the optimizer, and return a loss value.
+        """
+        running_loss = 0.0
+
+        for data, labels in trainloader:
+            # reset gradients
+            self._optim.zero_grad()  # type:ignore
+
+            # compute the loss
+            out = self.forward(data.view(data.shape[0], -1))
+            loss = self._criterion(out, labels)  # type:ignore
+
+            # propagate the loss and take a step in the optimizer
+            loss.backward()
+            self._optim.step()  # type:ignore
+
+            # Store the current batch loss
+            running_loss += loss_modifier(loss).item()
+
+        return running_loss
+
+    def computeValidationLoss(self, validloader: DataLoader, loss_modifier) -> float:
+        running_loss = 0.0
+        with no_grad():
+            for data_val, labels_val in validloader:
+                out_val = self.forward(data_val.view(data_val.shape[0], -1))
+                loss_val = self._criterion(out_val, labels_val)  # type:ignore
+
+                running_loss += loss_modifier(loss_val).item()
+        return running_loss
