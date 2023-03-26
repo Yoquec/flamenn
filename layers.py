@@ -17,7 +17,11 @@ class PreceptronLayer(object):
     """
 
     def __init__(
-        self, size: int, activation: Callable, dropout: bool, dropout_rate: float = 0.0
+        self,
+        size: int,
+        activation: Callable,
+        dropout: bool = False,
+        dropout_rate: float = 0.0,
     ):
         # Initial safety checks
         if (size is None) or not isinstance(size, int):
