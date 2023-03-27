@@ -280,7 +280,7 @@ class DeterministicAutoEncoder(MultiLayerPreceptron):
         between the original sequence and the reconstructed one.
         """
         running_loss = 0.0
-        with torch.no_grad():
+        with no_grad():
             for sequence, _ in validloader:
                 out = self.forward(sequence.view(sequence.shape[0], -1))
                 loss = self._criterion(out, sequence.view(sequence.shape[0], -1))  # type: ignore
@@ -294,7 +294,7 @@ class DeterministicAutoEncoder(MultiLayerPreceptron):
         sequence and the reconstructed one
         """
         disimilarity = 0.0
-        with torch.no_grad():
+        with no_grad():
             for sequence, _ in dataloader:
                 # get the reconstructed sequence and compute the difference
                 reconstructed_seq = self.forward(sequence.view(sequence.shape[0], -1))
