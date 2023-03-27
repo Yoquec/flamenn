@@ -161,7 +161,7 @@ class MultiLayerPreceptron(nn.Module):
         modify the output value of the loss function if needed before adding it to the running loss
         """
         self.loss_during_training = np.empty(epochs, dtype=float)
-        self.valid_loss_during_training = (
+        self.validation_loss_during_training = (
             np.empty(epochs, dtype=float) if validloader else None
         )
 
