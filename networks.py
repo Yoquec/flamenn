@@ -29,7 +29,7 @@ from .errors import (
 class MultiLayerPerceptron(nn.Module):
     """
     A class that represents Multi layer Perceptron (MLP)
-    arquitectures.
+    architectures.
     """
 
     def __init__(self, input_size: int) -> None:
@@ -50,7 +50,8 @@ class MultiLayerPerceptron(nn.Module):
 
     def _compose(self, pipe: List[Callable]) -> Callable:
         """
-        Small function composition to build composite functions
+        Small method for building composite functions.
+        Used for processing forward pipes.
         """
         return functools.reduce(lambda f, g: lambda x: g(f(x)), pipe)
 
@@ -58,7 +59,7 @@ class MultiLayerPerceptron(nn.Module):
         # ⛑  safety checks
         if self._optim is not None:
             raise ValueError(
-                "⚠️ No layers can be added after having" "set up the optimizer"
+                "⚠️ No layers can be added after having set up the optimizer"
             )
 
         # add the new layer to the list of layers
@@ -220,7 +221,7 @@ class MultiLayerPerceptron(nn.Module):
 
     def computeValidationLoss(self, validloader: DataLoader, loss_modifier) -> float:
         """
-        Method that computes validation loss in the case that a validation loader
+        Method that computes validation loss in the event that a validation loader
         was provided to the training method.
 
         #NOTE: If modified by the user, it must return a float.
@@ -237,7 +238,7 @@ class MultiLayerPerceptron(nn.Module):
 
 class DeterministicAutoEncoder(MultiLayerPerceptron):
     """
-    A class that represents deterministic AutoEncoders.
+    Class that represents Deterministic Autoencoders.
     """
 
     def __init__(self, input_sequence_size: int) -> None:
@@ -284,7 +285,7 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
         Method that computes validation difference in the case that a validation loader
         was provided to the training method.
 
-        #NOTE: If modified by the user, it must return a float accounting for the differnce
+        #NOTE: If modified by the user, it must return a float accounting for the difference
         between the original sequence and the reconstructed one.
         """
         running_loss = 0.0
@@ -297,9 +298,10 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
             return running_loss
 
     def disimilarity(self, dataloader: DataLoader, loss_modifier: Callable) -> float:
+        #TODO: RENAME THIS FUNCTION TO dissimilarity
         """
-        A score function for AutoEncoders that meassures differnece between the original
-        sequence and the reconstructed one
+        Score function for AutoEncoders that quantifies the differences (the dissimilarity) between the original
+        sequence and the reconstructed one.
         """
         disimilarity = 0.0
         with no_grad():
@@ -315,7 +317,7 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
         # ⛑  safety checks
         if self._optim is not None:
             raise ValueError(
-                "⚠️ No layers can be added after having" "set up the optimizer"
+                "⚠️ No layers can be added after having set up the optimizer"
             )
 
         # add the new layer to the list of layers

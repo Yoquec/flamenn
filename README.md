@@ -1,17 +1,17 @@
 # Flamenn 🔥👷
-Flamenn is a high-level [pytorch](pytorch.org) wrapper for rapid prototyping of models.
-It uses a builder pattern for creating network arquitectures using pytorch's components.
+Flamenn is a high-level [PyTorch](pytorch.org) wrapper for rapid model protyping.
+It uses a builder pattern for creating network arquitectures using PyTorch's components.
 
 ## Example usage
 ```python
 import torch
-from flamenn.networks import MultiLayerPreceptron
-from flamenn.layers import PreceptronLayer
+from flamenn.networks import MultiLayerPerceptron
+from flamenn.layers import PerceptronLayer
 
 testNN = (
-    MultiLayerPreceptron(input_size=5)
-    .addLayer(PreceptronLayer(5, activation=torch.nn.ReLu(), dropout=False))
-    .addLayer(PreceptronLayer(3, torch.nn.ReLu(), False))
+    MultiLayerPerceptron(input_size=5)
+    .addLayer(PerceptronLayer(5, activation=torch.nn.ReLU(), dropout=False))
+    .addLayer(PerceptronLayer(3, torch.nn.ReLU(), False))
     .addCriterion(torch.nn.NLLLoss())
     .addOptim("adam", learning_rate=10e-3)
 )
