@@ -14,7 +14,7 @@ from numpy._typing import NDArray
 from torch.utils.data.dataloader import DataLoader
 import functools
 from typing import List, Callable, Union
-from .layers import PreceptronLayer
+from .layers import PerceptronLayer
 from .errors import (
     NoCriterionAssigned,
     NoOptimizerAssigned,
@@ -24,9 +24,9 @@ from .errors import (
 
 
 # 🧠 Neural Networks -----------------------------------------------------------------
-class MultiLayerPreceptron(nn.Module):
+class MultiLayerPerceptron(nn.Module):
     """
-    A class that represents Multi layer Preceptron (MLP)
+    A class that represents Multi layer Perceptron (MLP)
     arquitectures.
     """
 
@@ -36,7 +36,7 @@ class MultiLayerPreceptron(nn.Module):
         super().__init__()
         self.dim_in = input_size
         self.module_layers = nn.ModuleList()
-        self.layers: List[PreceptronLayer] = []
+        self.layers: List[PerceptronLayer] = []
         self.forward_pipe: List[Callable] = []
         self.compiled_pipe: Union[Callable, None] = None
         self.loss_during_training: Union[List[float], NDArray, None] = None
@@ -52,7 +52,7 @@ class MultiLayerPreceptron(nn.Module):
         """
         return functools.reduce(lambda f, g: lambda x: g(f(x)), pipe)
 
-    def addLayer(self, layer: PreceptronLayer):
+    def addLayer(self, layer: PerceptronLayer):
         # ⛑  safety checks
         if self._optim is not None:
             raise ValueError(
@@ -185,7 +185,7 @@ class MultiLayerPreceptron(nn.Module):
         print(f"Training Loss: {self.loss_during_training[-1]}")
         if validloader:
             print(
-                f"Training Loss: {self.validation_loss_during_training[-1]}"  # type:ignore
+                f"Validation Loss: {self.validation_loss_during_training[-1]}"  # type:ignore
             )
 
     def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
@@ -233,7 +233,7 @@ class MultiLayerPreceptron(nn.Module):
         return running_loss
 
 
-class DeterministicAutoEncoder(MultiLayerPreceptron):
+class DeterministicAutoEncoder(MultiLayerPerceptron):
     """
     A class that represents deterministic AutoEncoders.
     """

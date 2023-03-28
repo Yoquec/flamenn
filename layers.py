@@ -11,7 +11,7 @@ from typing import Callable
 
 
 # 📦 Data structures -----------------------------------------------------------------
-class PreceptronLayer(object):
+class PerceptronLayer(object):
     """
     Object that represents a Neuron layer.
     """
