@@ -50,7 +50,7 @@ class MultiLayerPerceptron(nn.Module):
 
     def _compose(self, pipe: List[Callable]) -> Callable:
         """
-        Small composition composition to build composite functions
+        Small composition function to build composite functions
         """
         return functools.reduce(lambda f, g: lambda x: g(f(x)), pipe)
 

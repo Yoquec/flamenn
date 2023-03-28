@@ -10,8 +10,8 @@ from flamenn.layers import PerceptronLayer
 
 testNN = (
     MultiLayerPerceptron(input_size=5)
-    .addLayer(PerceptronLayer(5, activation=torch.nn.ReLu(), dropout=False))
-    .addLayer(PerceptronLayer(3, torch.nn.ReLu(), False))
+    .addLayer(PerceptronLayer(5, activation=torch.nn.ReLU(), dropout=False))
+    .addLayer(PerceptronLayer(3, torch.nn.ReLU(), False))
     .addCriterion(torch.nn.NLLLoss())
     .addOptim("adam", learning_rate=10e-3)
 )
