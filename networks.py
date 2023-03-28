@@ -16,8 +16,10 @@ import functools
 from typing import List, Callable, Union
 from .layers import PerceptronLayer
 from .errors import (
-    NoCriterionAssigned,
-    NoOptimizerAssigned,
+    CodedLayerAlreadyAssignedError,
+    NoCodedLayerAssignedError,
+    NoCriterionAssignedError,
+    NoOptimizerAssignedError,
     CriterionAlreadyAssignedError,
     OptimizerAlreadyAssignedError,
 )
@@ -143,9 +145,9 @@ class MultiLayerPerceptron(nn.Module):
         Method that forwards an input vector through the network
         """
         if self._optim is None:
-            raise NoOptimizerAssigned("🛑 You haven't assigned an optimizer yet!")
+            raise NoOptimizerAssignedError("🛑 You haven't assigned an optimizer yet!")
         elif self._criterion is None:
-            raise NoCriterionAssigned("🛑 You haven't assigned a criterion yet!")
+            raise NoCriterionAssignedError("🛑 You haven't assigned a criterion yet!")
         else:
             return self._compile_pipe(x)
 
@@ -238,9 +240,13 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
     A class that represents deterministic AutoEncoders.
     """
 
-    def __init__(self, input_sequence_size: int):
+    def __init__(self, input_sequence_size: int) -> None:
         # Initialize MLP methods
         super().__init__(input_sequence_size)
+        self.coded_layer_index: int = -1
+        self.coded_layer_index_pipe: int = -1
+        self.compiled_pipe_embedding: Union[Callable, None] = None
+        return
 
     def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
         """
@@ -258,7 +264,9 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
 
             # compute the loss (difference between an sequence and itself)
             out = self.forward(sequence.view(sequence.shape[0], -1))
-            loss = self._criterion(out, sequence.view(sequence.shape[0], -1))  # type:ignore
+            loss = self._criterion(
+                out, sequence.view(sequence.shape[0], -1)
+            )  # type:ignore
 
             # propagate the loss
             loss.backward()
@@ -302,3 +310,95 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
 
                 disimilarity += loss_modifier(loss).item()
             return disimilarity / len(dataloader)
+
+    def addLayer(self, layer: PerceptronLayer, coded_layer: bool = False):
+        # ⛑  safety checks
+        if self._optim is not None:
+            raise ValueError(
+                "⚠️ No layers can be added after having" "set up the optimizer"
+            )
+
+        # add the new layer to the list of layers
+        if len(self.layers) == 0:
+            new_layer = nn.Linear(self.dim_in, layer.size)
+        else:
+            new_layer = nn.Linear(self.layers[-1].size, layer.size)
+
+        # Check for the feature_layer flag
+        if coded_layer:
+            # coded layer is still unset
+            if self.coded_layer_index == -1 and self.coded_layer_index_pipe == -1:
+                self.coded_layer_index = len(self.layers)
+                self.coded_layer_index_pipe = len(self.forward_pipe)
+
+            # coded layer has already been set
+            else:
+                raise CodedLayerAlreadyAssignedError(
+                    f"🛑 The auto encoder layer has already been assigned to layer {self.coded_layer_index}"
+                )
+
+        # NOTE: By adding new_layer to two lists, we are NOT creating new objects,
+        # but adding references to the same object, so tensors and data will be the unique
+
+        # append the layer dataclass to have info about the layers.
+        self.layers.append(layer)
+        # register the linear layer as a module
+        self.module_layers.append(new_layer)
+        # add it to the forward_pipe
+        self.forward_pipe.append(new_layer)
+
+        # add the proper activation function
+        if layer.activation is not None:
+            new_act_func = layer.activation
+        else:  # back up with a Relu
+            new_act_func = nn.ReLU()
+
+        # add the activation function to the pipe to the pipe
+        self.forward_pipe.append(new_act_func)
+
+        # TODO: Think about adding activation functions as modules (they get repeated)
+        # same thing for the dropout
+        # self.module_act_funcs.append(new_act_func)
+
+        # add dropout regularization
+        if layer.dropout:
+            self.forward_pipe.append(nn.Dropout(p=layer.dropout_rate))
+
+        return self
+
+    def _pre_forward_checks(self) -> None:
+        if self._optim is None:
+            raise NoOptimizerAssignedError("🛑 You haven't assigned an optimizer yet!")
+        elif self._criterion is None:
+            raise NoCriterionAssignedError("🛑 You haven't assigned a criterion yet!")
+        elif self.coded_layer_index == -1:
+            raise NoCodedLayerAssignedError(
+                "🛑 You still haven't assigned a coded layer.\n"
+                "\t👉 Assign one by adding `coded_layer=True` in the `addLayer()` method"
+            )
+
+    def _compile_pipe_embedding(self, x: Tensor):
+        # if the pipe is not yet built, build it
+        if self.compiled_pipe_embedding is None:
+            offset = 0
+            # add offsets if needed for the activation and dropout layers
+            if self.layers[self.coded_layer_index].activation:
+                offset += 1
+            if self.layers[self.coded_layer_index].dropout:
+                offset += 1
+
+            # build the pipe
+            self.compiled_pipe_embedding = self._compose(
+                # build the pipe
+                self.forward_pipe[: self.coded_layer_index_pipe + 1 + offset]
+            )
+
+        return self.compiled_pipe_embedding(x)
+
+    def forward(self, x: Tensor) -> Tensor:
+        self._pre_forward_checks()
+        return self._compile_pipe(x)
+
+    def forwardEmbedding(self, x: Tensor) -> Tensor:
+        self._pre_forward_checks()
+        return self._compile_pipe_embedding(x)

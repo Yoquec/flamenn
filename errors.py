@@ -13,7 +13,7 @@ class CriterionAlreadyAssignedError(Warning):
         super().__init__(message)
 
 
-class NoCriterionAssigned(Warning):
+class NoCriterionAssignedError(Warning):
     def __init__(self, message: str):
         super().__init__(message)
 
@@ -23,6 +23,16 @@ class OptimizerAlreadyAssignedError(Warning):
         super().__init__(message)
 
 
-class NoOptimizerAssigned(Warning):
+class NoOptimizerAssignedError(Warning):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class CodedLayerAlreadyAssignedError(Warning):
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class NoCodedLayerAssignedError(Warning):
     def __init__(self, message: str):
         super().__init__(message)
