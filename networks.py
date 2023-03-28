@@ -157,7 +157,9 @@ class MultiLayerPerceptron(nn.Module):
         trainloader: DataLoader,
         epochs: int,
         validloader: Union[DataLoader, None] = None,
-        loss_modifier: Callable = lambda x: x,
+        example_modifier: Callable = lambda t: t.view(t.shape[0], -1),
+        label_modifier: Callable = lambda t: t,
+        loss_modifier: Callable = lambda t: t.item(),
     ):
         """
         NOTE: loss_modifier is a function that will be used as an injected dependency to
@@ -174,7 +176,9 @@ class MultiLayerPerceptron(nn.Module):
             # TODO: For now we will introduce a loss_modifier function as parameter to let the user handle it
 
             # backpropagate and
-            running_loss = self.propagateLoss(trainloader, loss_modifier)
+            running_loss = self.propagateLoss(
+                trainloader, example_modifier, label_modifier, loss_modifier
+            )
             epoch_loss = running_loss / len(trainloader)
 
             # store the loss
@@ -182,7 +186,9 @@ class MultiLayerPerceptron(nn.Module):
 
             # compute validation scores
             if validloader is not None:
-                validation_loss = self.computeValidationLoss(validloader, loss_modifier)
+                validation_loss = self.computeValidationLoss(
+                    validloader, example_modifier, label_modifier, loss_modifier
+                )
                 self.validation_loss_during_training[e] = validation_loss  # type:ignore
 
         print(f"Training Loss: {self.loss_during_training[-1]}")
@@ -191,11 +197,17 @@ class MultiLayerPerceptron(nn.Module):
                 f"Validation Loss: {self.validation_loss_during_training[-1]}"  # type:ignore
             )
 
-    def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
+    def propagateLoss(
+        self,
+        trainloader: DataLoader,
+        example_modifier: Callable,
+        label_modifier: Callable,
+        loss_modifier: Callable,
+    ) -> float:
         """
         # IMPORTANT
-        This is a method that should be modularized and modified by the user depending on the
-        network arquitecture
+        This is a method that should be modularized and modified by the user through the modifier arguments
+        depending on the network arquitecture
 
         This method must load the training data of the epoch (whether in batches or not), propagate
         the loss backwards, take the needed step in the optimizer, and return a loss value.
@@ -207,19 +219,25 @@ class MultiLayerPerceptron(nn.Module):
             self._optim.zero_grad()  # type:ignore
 
             # compute the loss
-            out = self.forward(data.view(data.shape[0], -1))
-            loss = self._criterion(out, labels)  # type:ignore
+            out = self.forward(example_modifier(data))
+            loss = self._criterion(out, label_modifier(labels))  # type:ignore
 
             # propagate the loss and take a step in the optimizer
             loss.backward()
             self._optim.step()  # type:ignore
 
             # Store the current batch loss
-            running_loss += loss_modifier(loss).item()
+            running_loss += loss_modifier(loss)
 
         return running_loss
 
-    def computeValidationLoss(self, validloader: DataLoader, loss_modifier) -> float:
+    def computeValidationLoss(
+        self,
+        validloader: DataLoader,
+        example_modifier: Callable,
+        label_modifier: Callable,
+        loss_modifier: Callable,
+    ) -> float:
         """
         Method that computes validation loss in the event that a validation loader
         was provided to the training method.
@@ -229,10 +247,12 @@ class MultiLayerPerceptron(nn.Module):
         running_loss = 0.0
         with no_grad():
             for data_val, labels_val in validloader:
-                out_val = self.forward(data_val.view(data_val.shape[0], -1))
-                loss_val = self._criterion(out_val, labels_val)  # type:ignore
+                out_val = self.forward(example_modifier(data_val))
+                loss_val = self._criterion(
+                    out_val, label_modifier(labels_val)
+                )  # type:ignore
 
-                running_loss += loss_modifier(loss_val).item()
+                running_loss += loss_modifier(loss_val)
         return running_loss
 
 
@@ -249,7 +269,13 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
         self.compiled_pipe_embedding: Union[Callable, None] = None
         return
 
-    def propagateLoss(self, trainloader: DataLoader, loss_modifier: Callable) -> float:
+    def propagateLoss(
+        self,
+        trainloader: DataLoader,
+        example_modifier: Callable,
+        label_modifier: Callable,
+        loss_modifier: Callable,
+    ) -> float:
         """
         # IMPORTANT
         This is a method that should be modularized and modified by the user depending on the
@@ -257,6 +283,10 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
 
         This method must load the training data of the epoch (whether in batches or not), propagate
         the loss backwards, take the needed step in the optimizer, and return a loss value.
+
+        # FIXME:
+        In the autoencoder case, labels are not used, so label_modifier will not be used.
+        This should be fixed.
         """
         running_loss = 0.0
         for sequence, _ in trainloader:
@@ -264,22 +294,24 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
             self._optim.zero_grad()  # type: ignore
 
             # compute the loss (difference between an sequence and itself)
-            out = self.forward(sequence.view(sequence.shape[0], -1))
-            loss = self._criterion(
-                out, sequence.view(sequence.shape[0], -1)
-            )  # type:ignore
+            out = self.forward(example_modifier(sequence))
+            loss = self._criterion(out, example_modifier(sequence))  # type:ignore
 
             # propagate the loss
             loss.backward()
             self._optim.step()  # type: ignore
 
             # Store the current batch loss
-            running_loss += loss_modifier(loss).item()
+            running_loss += loss_modifier(loss)
 
         return running_loss
 
     def computeValidationLoss(
-        self, validloader: DataLoader, loss_modifier: Callable
+        self,
+        validloader: DataLoader,
+        example_modifier: Callable,
+        label_modifier: Callable,
+        loss_modifier: Callable,
     ) -> float:
         """
         Method that computes validation difference in the case that a validation loader
@@ -291,10 +323,10 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
         running_loss = 0.0
         with no_grad():
             for sequence, _ in validloader:
-                out = self.forward(sequence.view(sequence.shape[0], -1))
-                loss = self._criterion(out, sequence.view(sequence.shape[0], -1))  # type: ignore
+                out = self.forward(example_modifier(sequence))
+                loss = self._criterion(out, example_modifier(sequence))  # type: ignore
 
-                running_loss += loss_modifier(loss).item()
+                running_loss += loss_modifier(loss)
             return running_loss
 
     def disimilarity(self, dataloader: DataLoader, loss_modifier: Callable) -> float:
