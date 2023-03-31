@@ -329,21 +329,20 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
                 running_loss += loss_modifier(loss)
             return running_loss
 
-    def disimilarity(self, dataloader: DataLoader, loss_modifier: Callable) -> float:
-        #TODO: RENAME THIS FUNCTION TO dissimilarity
+    def dissimilarity(self, dataloader: DataLoader, loss_modifier: Callable) -> float:
         """
         Score function for AutoEncoders that quantifies the differences (the dissimilarity) between the original
         sequence and the reconstructed one.
         """
-        disimilarity = 0.0
+        dissimilarity = 0.0
         with no_grad():
             for sequence, _ in dataloader:
                 # get the reconstructed sequence and compute the difference
                 reconstructed_seq = self.forward(sequence.view(sequence.shape[0], -1))
                 loss = self._criterion(reconstructed_seq, sequence)  # type:ignore
 
-                disimilarity += loss_modifier(loss).item()
-            return disimilarity / len(dataloader)
+                dissimilarity += loss_modifier(loss).item()
+            return dissimilarity / len(dataloader)
 
     def addLayer(self, layer: PerceptronLayer, coded_layer: bool = False):
         # ⛑  safety checks
@@ -414,12 +413,10 @@ class DeterministicAutoEncoder(MultiLayerPerceptron):
     def _compile_pipe_embedding(self, x: Tensor):
         # if the pipe is not yet built, build it
         if self.compiled_pipe_embedding is None:
-            offset = 0
             # add offsets if needed for the activation and dropout layers
-            if self.layers[self.coded_layer_index].activation:
-                offset += 1
-            if self.layers[self.coded_layer_index].dropout:
-                offset += 1
+            offset = int(bool(self.layers[self.coded_layer_index].activation)) + int(
+                bool(self.layers[self.coded_layer_index].dropout)
+            )
 
             # build the pipe
             self.compiled_pipe_embedding = self._compose(
