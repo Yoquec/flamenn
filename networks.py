@@ -10,7 +10,7 @@ from torch import nn, optim, Tensor
 from torch import no_grad
 from tqdm import tqdm
 import numpy as np
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 from torch.utils.data.dataloader import DataLoader
 import functools
 from typing import List, Callable, Union
