@@ -1,1 +1,2 @@
-__pycache__/
+src/flamenn/**/__pycache__/
+dist/
