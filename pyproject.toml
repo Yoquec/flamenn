@@ -3,7 +3,7 @@ name = "flamenn"
 version = "0.1.0"
 description = "Flamenn is a high-level PyTorch wrapper for rapid model protyping. It uses a builder pattern for creating network arquitectures using PyTorch's components."
 authors = ["Yoquec <alvaro.viejo@pm.me>"]
-license = "BSD3"
+license = "BSD-3-Clause"
 readme = "README.md"
 
 [tool.poetry.dependencies]
